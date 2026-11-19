@@ -1,6 +1,6 @@
 {
   "name": "react-native-shake-devtools",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Open-source in-app bug reporting & devtools for React Native test builds: shake → prefilled bug report → Jira / Slack / Lark / webhook. Logs, network (redacted), crashes, steps. Stripped from prod.",
   "license": "MIT",
   "repository": {
