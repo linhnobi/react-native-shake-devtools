@@ -1,0 +1,37 @@
+# Dependabot: propose updates for the library's devDependencies and for the SHA-pinned GitHub Actions.
+#
+# - The package has no runtime `dependencies`, so every npm update here is a devDependency (build,
+#   test, types). They are grouped into one weekly PR so `npm run check` judges them together.
+# - Actions are pinned to full commit SHAs in `.github/workflows/`; Dependabot rewrites the SHA and
+#   the version comment together.
+# - `example/` is a separate React Native app whose versions follow React Native upgrades, done by
+#   hand; it is not listed here on purpose.
+# - Security alerts and security updates are separate repository settings (Settings > Code security)
+#   and are not configured by this file.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: build
+      include: scope

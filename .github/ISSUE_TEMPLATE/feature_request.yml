@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+title: 'feat: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good requests describe the problem first. If you want to add a new bug-report destination,
+        check whether `bugReport.connectorTypes` already lets you build it in your own app.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Who is affected (QA, developer, customer) and what is hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to see. Include API sketches if you have them.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Shake / ways to open the panel
+        - Log screen
+        - Capture (network, console, errors)
+        - Bug report
+        - New connector
+        - Localisation
+        - Expo support
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints to keep in mind
+      description: >-
+        The library has no runtime dependencies and no native module, ships a no-op twin of every public
+        export, and never sends telemetry. Does your idea need to bend any of these?
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself.

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out-tsc/
+coverage/
+*.log
+.DS_Store
+/lib/
+
+# Local-only: planning notes and AI agent worktrees, never published
+docs/growth/
+docs/superpowers/
+.claude/worktrees/

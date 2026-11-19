@@ -1,0 +1,139 @@
+name: Bug report
+description: Something does not work, crashes, or shows wrong data
+title: 'bug: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Do not paste tokens, passwords or real user data.** Redact them first.
+        Security problems go through [private vulnerability reporting](https://github.com/linhnobi/react-native-shake-devtools/security/advisories/new), not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got. Screenshots or a short screen recording help.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal repro (a link to a repo or the `example/` app with a small change) is best.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: entry
+    attributes:
+      label: Entry you import
+      options:
+        - "react-native-shake-devtools (gorhom sheet)"
+        - "react-native-shake-devtools/plain"
+        - "react-native-shake-devtools/capture only"
+        - "react-native-shake-devtools/shake only"
+        - "Metro no-op resolver (react-native-shake-devtools/metro)"
+        - "Other / not sure"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Shake detection
+        - Panel / log screen UI
+        - Network or console capture
+        - Redaction / privacy
+        - Bug report form
+        - Connector (Jira / Slack / Lark / webhook / custom)
+        - Send queue / retry
+        - Screenshot
+        - Production no-op / Metro
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Library version or commit
+      placeholder: "0.0.1, or the commit SHA of main"
+    validations:
+      required: true
+  - type: input
+    id: rn-version
+    attributes:
+      label: React Native version
+      placeholder: "0.86.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: project-type
+    attributes:
+      label: Project type
+      description: Expo support is still in progress; reports from Expo apps are welcome and help prioritise it.
+      options:
+        - Bare React Native
+        - Expo (development build)
+        - Expo Go
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: expo-version
+    attributes:
+      label: Expo SDK version
+      description: Leave empty if you do not use Expo. Note if you use `expo/fetch` as the global `fetch`.
+      placeholder: "56"
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - iOS
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS version
+      description: Real device or emulator or simulator, model, OS version.
+      placeholder: "Samsung SM-M346B, Android 14 (real device)"
+    validations:
+      required: true
+  - type: dropdown
+    id: build-type
+    attributes:
+      label: Build type
+      options:
+        - Debug (Metro)
+        - Release or embedded JS bundle
+        - Not sure
+  - type: dropdown
+    id: new-arch
+    attributes:
+      label: Architecture
+      options:
+        - New Architecture
+        - Old architecture
+        - Not sure
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or the exported error report
+      description: Paste relevant output. Redact secrets and personal data.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed tokens, passwords and personal data from everything I pasted.
+          required: true

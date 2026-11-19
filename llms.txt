@@ -1,0 +1,19 @@
+# react-native-shake-devtools
+
+> In-app devtools for React Native. Shake the device to open a panel with the network and console log, uncaught errors, the previous crashed session and device info. An opt-in bug-report flow sends a pre-filled ticket (screenshot, auto-recorded steps, error log) from a QA build to Jira, Slack, Lark/Feishu or a webhook. Pure TypeScript with no runtime dependencies and no native module; the app supplies screenshots, secure storage and file sharing. Secrets are redacted before anything leaves the device, there is no telemetry, and production builds can swap the library for an empty no-op. Not yet published to npm; Expo support is in progress.
+
+## Docs
+
+- [README](README.md): overview, entries, compatibility and how the library is split from the app
+- [Install guide](docs/install.md): bare React Native and Expo, with paste-ready prompts for AI agents
+- [For developers](docs/for-developers.md): one page for a developer evaluating it: why it is safe in a test build, install, checking production, status
+- [Security and privacy](docs/security-privacy.md): what is captured, redacted and stored, and where secrets live
+- [Contributing](CONTRIBUTING.md): dev setup, conventions, the no-op surface rule
+- [Agent instructions](AGENTS.md): commands, structure and rules for AI agents working in this repo
+
+## Optional
+
+- [Security policy](SECURITY.md): how to report a vulnerability privately
+- [Good first issues](docs/good-first-issues.md): drafts for new contributors
+- [Example app](example/README.md): a React Native 0.86 app for trying the library on a real device
+- [Expo example app](example-expo/README.md): an Expo SDK 58 app for Expo Go, a dev build and a no-op release (not yet run on a device)

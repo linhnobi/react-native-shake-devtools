@@ -1,0 +1,216 @@
+# Kiểm lib trên mọi dòng RN trong bảng "Tương thích" của README.
+#
+# Ba job:
+# - `pinned`: đúng `package-lock.json` (RN 0.86), `npm run check` trên bản thấp nhất của từng nhánh
+#   trong `engines.node` của package.json (`^20.19.4 || ^22.13 || >=24.3`) cộng LTS mới nhất.
+#   Đổi `engines.node` thì đổi danh sách này theo. Mọi job đều có bước khẳng định Node đang chạy
+#   nằm trong `engines.node`, nên một bản Node lọt ra ngoài khoảng đó làm job đỏ ngay. Sau đó
+#   `npm run build` (bob → `lib/`) và `npm pack --dry-run`: gói có đủ mọi đích của `exports`, không
+#   lọt file test.
+# - `compat`: mỗi dòng RN khác thay bộ devDependencies (RN + React + preset + reanimated + …) rồi
+#   cài lại KHÔNG theo lockfile. Kiểm `tsc -p tsconfig.lib.json` (chỉ mã lib, lý do ở file đó) +
+#   jest. Thêm / bỏ một dòng ở đây thì sửa bảng trong README cùng lúc.
+# - `consumer`: `npm run check:consumer` (`scripts/check-consumer.mjs`, mô tả đầy đủ ở đầu file đó):
+#   build + `npm pack`, cài tarball vào một app tạm cùng các peer theo bản lockfile, tsc của app đọc
+#   `lib/typescript/*.d.ts` với `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
+#   `skipLibCheck: false` dưới `bundler`, `nodenext` (ESM + CJS) và preset
+#   `@react-native/typescript-config`; bề mặt noop ↔ thật; mọi entry của `exports` resolve qua
+#   `import` lẫn `require`. Bắt lỗi `.d.ts` mà `npm run check` (đọc `src/`) không thấy.
+#
+# Chỉ là jest + tsc trên Linux: không build native, không chạy trên máy.
+#
+# Action ghim theo **SHA commit** (kèm chú thích bản), không theo tag: tag và branch của action
+# đổi được sau lưng mình. Dependabot (`.github/dependabot.yml`) mở PR khi có bản mới.
+# `persist-credentials: false`: job chỉ đọc, không cần token git nằm lại trong `.git/config`.
+
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Thứ Hai hằng tuần. Dòng `compat` cài không theo lockfile nên gói con trôi theo npm; lịch này
+    # bắt chỗ vỡ đó trước khi có PR đụng tới.
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned:
+    name: RN 0.86 (lockfile) · Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.19.4', '22.13.0', '24.3.0', 'lts/*']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Node nằm trong engines.node
+        run: >-
+          node -e "const r = require('./package.json').engines.node;
+          if (!require('semver').satisfies(process.version, r)) {
+          console.error(process.version + ' ngoài engines.node ' + r); process.exit(1); }
+          console.log(process.version + ' trong ' + r);"
+      - run: npm run check
+      # `npm ci` đã chạy `prepare` (= `bob build`); bước riêng để lỗi build hiện đúng tên.
+      - run: npm run build
+      - name: Gói phát hành (npm pack --dry-run)
+        run: |
+          npm pack --dry-run --ignore-scripts
+          npm pack --dry-run --ignore-scripts --json > "$RUNNER_TEMP/pack.json"
+          node -e "
+          const packed = new Set(require(process.env.RUNNER_TEMP + '/pack.json')[0].files.map((f) => f.path));
+          const targets = Object.values(require('./package.json').exports)
+            .flatMap((v) => (typeof v === 'string' ? [v] : Object.values(v)))
+            .map((p) => p.replace(/^\.\//, ''));
+          const missing = targets.filter((p) => !packed.has(p));
+          const leaked = [...packed].filter((p) => /\.test\.[jt]sx?$|^src\/testing\/|test-setup/.test(p));
+          if (missing.length || leaked.length) { console.error({ missing, leaked }); process.exit(1); }
+          console.log(packed.size + ' file; đủ ' + targets.length + ' đích của exports; không file test');"
+
+  compat:
+    name: RN ${{ matrix.rn }} · Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Cận dưới của mọi peer: RN 0.76 + React 18, reanimated 3 (không worklets),
+          # gesture-handler 2.18 (bản đầu có `ReanimatedSwipeable`), gorhom 5.0, safe-area-context 4.0.
+          # Từ RN 0.85 preset jest mới tách thành gói `@react-native/jest-preset` ⇒ xoá khỏi dòng cũ.
+          - rn: '0.76'
+            node: '20'
+            set: >-
+              devDependencies.react-native=0.76.9
+              devDependencies.react=18.3.1
+              devDependencies.react-test-renderer=18.3.1
+              devDependencies.@types/react=~18.3.0
+              devDependencies.@react-native/babel-preset=0.76.9
+              devDependencies.react-native-reanimated=~3.16.7
+              devDependencies.react-native-gesture-handler=~2.18.1
+              devDependencies.@gorhom/bottom-sheet=~5.0.6
+              devDependencies.react-native-safe-area-context=~4.0.2
+            delete: >-
+              devDependencies.@react-native/jest-preset
+              devDependencies.react-native-worklets
+          # React 19 thấp nhất (RN đầu tiên đi với React 19), cùng bộ peer cận dưới.
+          - rn: '0.78'
+            node: '20'
+            set: >-
+              devDependencies.react-native=0.78.3
+              devDependencies.react=19.0.0
+              devDependencies.react-test-renderer=19.0.0
+              devDependencies.@types/react=~19.0.0
+              devDependencies.@react-native/babel-preset=0.78.3
+              devDependencies.react-native-reanimated=~3.16.7
+              devDependencies.react-native-gesture-handler=~2.18.1
+              devDependencies.@gorhom/bottom-sheet=~5.0.6
+              devDependencies.react-native-safe-area-context=~4.0.2
+            delete: >-
+              devDependencies.@react-native/jest-preset
+              devDependencies.react-native-worklets
+          # Dòng giữa: preset jest còn trong `react-native` (có `jest/resolver.js`), reanimated 4.3
+          # + worklets 0.8, gesture-handler 2.x mới nhất.
+          - rn: '0.83'
+            node: '22'
+            set: >-
+              devDependencies.react-native=0.83.10
+              devDependencies.react=19.2.0
+              devDependencies.react-test-renderer=19.2.0
+              devDependencies.@types/react=~19.2.0
+              devDependencies.@react-native/babel-preset=0.83.10
+              devDependencies.react-native-reanimated=~4.3.4
+              devDependencies.react-native-worklets=~0.8.3
+              devDependencies.react-native-gesture-handler=~2.33.1
+              devDependencies.@gorhom/bottom-sheet=~5.1.8
+              devDependencies.react-native-safe-area-context=~5.6.2
+            delete: >-
+              devDependencies.@react-native/jest-preset
+          # Dòng mới nhất lúc kiểm (6/11/2026). RN 0.87+ bỏ Node 20.
+          - rn: '0.88'
+            node: '24'
+            set: >-
+              devDependencies.react-native=0.88.1
+              devDependencies.react=19.3.0
+              devDependencies.react-test-renderer=19.3.0
+              devDependencies.@types/react=~19.3.0
+              devDependencies.@react-native/babel-preset=0.88.1
+              devDependencies.@react-native/jest-preset=0.88.1
+              devDependencies.react-native-reanimated=~4.7.1
+              devDependencies.react-native-worklets=~0.13.1
+              devDependencies.react-native-gesture-handler=~3.5.0
+              devDependencies.@gorhom/bottom-sheet=~5.2.14
+              devDependencies.react-native-safe-area-context=~5.11.1
+            delete: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      # React ghim đúng bản renderer mà RN nhúng: với RN 0.78, React 19.0.9 thay cho 19.0.0 làm
+      # các suite chạm renderer đỏ "Incompatible React versions".
+      # `--ignore-scripts`: bỏ `prepare` (`bob build`). `lib/` chỉ dựng từ dòng ghim (job `pinned`);
+      # dòng này chỉ kiểm tsc + jest trên mã nguồn.
+      - name: Cài bộ version của dòng RN ${{ matrix.rn }}
+        env:
+          SET: ${{ matrix.set }}
+          DELETE: ${{ matrix.delete }}
+        run: |
+          # shellcheck disable=SC2086 # tách theo khoảng trắng là chủ ý: mỗi từ một cặp khoá=giá trị
+          npm pkg set $SET
+          if [ -n "$DELETE" ]; then
+            # shellcheck disable=SC2086
+            npm pkg delete $DELETE
+          fi
+          npm install --no-package-lock --no-audit --no-fund --ignore-scripts
+          npm ls --depth=0 || true
+      - name: Node nằm trong engines.node
+        run: >-
+          node -e "const r = require('./package.json').engines.node;
+          if (!require('semver').satisfies(process.version, r)) {
+          console.error(process.version + ' ngoài engines.node ' + r); process.exit(1); }
+          console.log(process.version + ' trong ' + r);"
+      - run: npx tsc --noEmit -p tsconfig.lib.json
+      - run: npm run test:ci
+
+  consumer:
+    name: Consumer · tarball + strict tsc + exports
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      # `--ignore-scripts`: bỏ `prepare` (`bob build`) và script cài của mọi gói phụ thuộc. Script tự
+      # chạy `npm run build` trước `npm pack`, và app tạm cũng cài với `--ignore-scripts`.
+      - run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Node nằm trong engines.node
+        run: >-
+          node -e "const r = require('./package.json').engines.node;
+          if (!require('semver').satisfies(process.version, r)) {
+          console.error(process.version + ' ngoài engines.node ' + r); process.exit(1); }
+          console.log(process.version + ' trong ' + r);"
+      - run: npm run check:consumer

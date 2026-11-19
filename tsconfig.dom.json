@@ -1,0 +1,20 @@
+{
+  /*
+   * Mã lib qua tsc với lib "DOM" — như app Expo (`expo/tsconfig.base` có "DOM") trỏ `paths` của
+   * gói vào `src/`. `npm run typecheck` chạy file này sau `tsconfig.json`.
+   *
+   * Hai bộ kiểu của `Blob`, `FormData`, `fetch`… khác nhau: kiểu toàn cục của RN
+   * (`react-native/src/types/globals.d.ts`) và của DOM. Mã lib phải qua cả hai. Vd `BlobOptions` của
+   * RN bắt buộc `lastModified`, `BlobPropertyBag` của DOM không có nó ⇒ object literal
+   * `{ type, lastModified }` qua được bộ RN nhưng đỏ ở bộ DOM (`slack/index.ts`, `readBlob`).
+   *
+   * Có cả DOM lẫn RN thì hai `var Blob` trùng nhau trong `.d.ts`: `skipLibCheck` (từ `tsconfig.json`)
+   * bỏ qua lỗi đó, như ở app. `types: []` như `tsconfig.build.json`: app không có `@types/node`,
+   * `@types/jest`.
+   */
+  "extends": "./tsconfig.lib.json",
+  "compilerOptions": {
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": []
+  }
+}

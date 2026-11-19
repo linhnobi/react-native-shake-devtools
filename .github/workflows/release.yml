@@ -1,0 +1,144 @@
+# Release with Changesets + npm trusted publishing (OIDC, no long-lived npm token).
+#
+# SAFETY GUARD (fails closed): this workflow cannot version or publish unless package.json is
+# positively proven to have no truthy `private` field. The `verify` job (read-only token) evaluates
+# `String(!require('./package.json').private)`; only the exact output `true` enables release. If
+# `node` fails, package.json is unreadable or broken, or `private` is `true`, `"true"`, or any other
+# truthy value, release stays disabled. The `release` job (the only one with write and id-token
+# permissions) runs only when `verify` enabled it AND the ref is `refs/heads/main`, and it re-checks
+# the guard itself and aborts if the proof does not hold. Publishing is a separate, deliberate
+# decision: remove `"private": true` from package.json (and finish the build / `files` work) in the
+# same change that turns releases on. Defence in depth: `changeset publish` and `npm publish` also
+# refuse private packages on their own.
+#
+# One-time setup before the first real release (not done by this file, needs the npm and GitHub websites):
+#   1. npmjs.com > package > Settings > Trusted Publisher > GitHub Actions, with
+#      owner `linhnobi`, repository `react-native-shake-devtools`, workflow file `release.yml`.
+#      npm expires a new trusted publisher that has not published within 2 days, so add it when a
+#      CI publish is about to happen, not earlier.
+#   2. GitHub > Settings > Actions > General > Workflow permissions: allow GitHub Actions to create and
+#      approve pull requests, or the "Version Packages" PR cannot be opened with the default token.
+#   3. Remove `"private": true` from package.json.
+#
+# How trusted publishing works here: `id-token: write` lets the job mint an OIDC token, npm (>= 11.5.1,
+# bundled with Node 24.5 and later) exchanges it for a short-lived publish credential, and a provenance
+# attestation is generated automatically (NPM_CONFIG_PROVENANCE makes that explicit; npm generates it
+# only for a public repository). There is no NPM_TOKEN secret anywhere.
+#
+# Supply chain: every action is pinned to a full commit SHA (the comment names the version), because a
+# tag or branch can be moved after review; `changesets/action@v2` in particular is a branch. A
+# compromised action or dependency install script in the `release` job could publish a malicious
+# version with valid provenance. Dependabot (`.github/dependabot.yml`) proposes SHA updates.
+#
+# Flow (changesets/action): pushes to main with pending `.changeset/*.md` files open or update a
+# "Version Packages" PR; merging that PR bumps the version, updates CHANGELOG.md and publishes.
+# The action must be v2 or later: `@changesets/cli` 3 reports what it published and tagged only
+# through the `CHANGESETS_OUTPUT` file, which v2 reads. v1 parsed a `New tag:` line that CLI 3 no
+# longer prints, so it would push no git tag and create no GitHub release.
+
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# Default for every job: read-only. Write and OIDC permissions are granted only on `release` below.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Guard and check (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      enabled: ${{ steps.guard.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Guard (stay inert unless package.json is provably public)
+        id: guard
+        shell: bash
+        run: |
+          v="$(node -p "String(!require('./package.json').private)")" || v=false
+          if [ "$v" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Release disabled::package.json is private (or could not be read), so nothing is versioned or published."
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.guard.outputs.enabled == 'true'
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        if: steps.guard.outputs.enabled == 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Check
+        if: steps.guard.outputs.enabled == 'true'
+        run: npm run check
+
+  release:
+    name: Version or publish
+    needs: verify
+    if: needs.verify.outputs.enabled == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write        # push the version branch and tags
+      pull-requests: write   # open / update the "Version Packages" PR
+      id-token: write        # npm trusted publishing (OIDC) + provenance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Re-check guard (abort unless provably public and on main)
+        shell: bash
+        run: |
+          v="$(node -p "String(!require('./package.json').private)")" || v=false
+          if [ "$v" != "true" ] || [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Refusing to release: package.json is not provably public, or ref is not main."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # `--ignore-scripts`: this job holds `contents: write` and `id-token: write`, so no install
+      # script of any devDependency may run here. The only script the package needs is our own
+      # `prepare` (= `bob build`), run explicitly below. `npm publish` runs `prepare` once more
+      # before packing; that is our script, not a dependency's.
+      - name: Install (no dependency scripts)
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Build
+        run: npm run build
+
+      # v2 takes the default `github-token` input (the job's GITHUB_TOKEN) and pushes the version
+      # commit and tags through the GitHub API; the GITHUB_TOKEN environment variable is ignored.
+      - name: Version PR or publish
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2 (`@v2` is a branch)
+        with:
+          version-script: npm run version-packages
+          publish-script: npm run release
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'

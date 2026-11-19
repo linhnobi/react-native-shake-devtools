@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/linhnobi/react-native-shake-devtools/security/advisories/new
+    about: Please do not open a public issue for vulnerabilities. Use private vulnerability reporting.
+  - name: Install guide
+    url: https://github.com/linhnobi/react-native-shake-devtools/blob/main/docs/install.md
+    about: Setup problems are often a missing provider or peer dependency; check the install guide first.
+  - name: Security and privacy
+    url: https://github.com/linhnobi/react-native-shake-devtools/blob/main/docs/security-privacy.md
+    about: What the library captures, redacts and stores.

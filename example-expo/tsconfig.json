@@ -1,0 +1,25 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    // `lib` stays Expo's default ("DOM", "ESNext"): the library's source type-checks under both
+    // React Native's globals and DOM (its root `tsconfig.dom.json` checks that).
+    "paths": {
+      // The library, read from source in ../src (Metro gets it through metro.config.js).
+      "react-native-shake-devtools/plain": ["../src/plain/index.ts"],
+      "react-native-shake-devtools/capture": ["../src/capture/index.ts"],
+      // ../src would otherwise find React and React Native types in the repo root node_modules
+      // (the library's dev copies, other versions): pin them to this app's copies. Entries
+      // ending in .d.ts are types only; Expo's Metro skips them when it reads tsconfig paths.
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "react-native": ["./node_modules/react-native/types_generated/index.d.ts"],
+      "react-native-reanimated": ["./node_modules/react-native-reanimated/lib/typescript/index.d.ts"],
+      "react-native-safe-area-context": [
+        "./node_modules/react-native-safe-area-context/lib/typescript/src/index.d.ts"
+      ]
+    }
+  },
+  "include": ["index.ts", "src/**/*.ts", "src/**/*.tsx"]
+}

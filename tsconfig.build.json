@@ -1,0 +1,16 @@
+{
+  /*
+   * `.d.ts` cho bản phát hành — target `typescript` của react-native-builder-bob (`npm run build`)
+   * đọc file này, ghi ra `lib/typescript/`.
+   *
+   * Cùng tập file với `tsconfig.lib.json` (mã lib, không test, không `src/testing/`).
+   * - `rootDir: src` ⇒ `lib/typescript/<entry>.d.ts` đứng song song `lib/module/<entry>.js`.
+   * - `types: []` ⇒ kiểu của lib không được dựa vào `@types/node` / `@types/jest` (app không có
+   *   chúng); `.d.ts` không mang `/// <reference types="node" />`.
+   */
+  "extends": "./tsconfig.lib.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  /*
+   * Typecheck riêng mã của lib — bỏ file test và đồ chơi test.
+   *
+   * Metro của app bundle thẳng `src/` (điều kiện `react-native` trong `package.json#exports`), nên mã
+   * lib phải qua tsc với kiểu của MỌI dòng RN trong bảng tương thích — bắt API dòng cũ chưa có. (tsc
+   * của app thì đọc `lib/typescript/*.d.ts`, dựng từ file này qua `tsconfig.build.json`.)
+   *
+   * File test thì không: chúng mock `useColorScheme`, `Share.share`… theo kiểu của RN đang ghim
+   * (0.86), mà kiểu đó đổi qua từng dòng RN (vd `ColorSchemeName` của RN 0.86 có `'unspecified'`,
+   * của 0.78 và 0.88 thì không; kết quả `Share.share` của 0.88 đòi thêm `activityType`).
+   *
+   * CI dùng file này cho các dòng RN khác bản ghim; dòng ghim chạy `npm run check` (cả test).
+   */
+  "extends": "./tsconfig.json",
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/testing/**", "src/test-setup.ts"]
+}

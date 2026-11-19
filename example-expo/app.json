@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Shake Devtools Expo",
+    "slug": "shake-devtools-example-expo",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shakedevtools.exampleexpo"
+    },
+    "android": {
+      "package": "com.shakedevtools.exampleexpo",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sharing"
+    ]
+  }
+}

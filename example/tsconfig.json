@@ -1,0 +1,15 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": [],
+    "paths": {
+      "react-native-shake-devtools": ["../src/index.ts"],
+      "react-native-shake-devtools/shake": ["../src/shake/index.ts"],
+      "react-native-shake-devtools/capture": ["../src/capture/index.ts"],
+      "react-native-shake-devtools/i18n": ["../src/i18n/index.ts"]
+    }
+  },
+  "include": ["index.js", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["**/node_modules", "**/Pods"]
+}
